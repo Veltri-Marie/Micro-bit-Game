@@ -67,6 +67,11 @@ Les directions envoyées par le **gamepad** sont basées sur l'orientation du mi
 - **`console.py`** : Contient la logique du jeu. Il crée un plateau avec des murs et des objets, et gère le mouvement du joueur et du chat.
 - **`gamepad.py`** : Permet de détecter les mouvements du joueur en utilisant l'accéléromètre du micro:bit et d'envoyer les commandes de direction via la radio.
 
+## Déroulé du jeu
+
+Pour voir une démonstration du déroulé du jeu, voici une vidéo expliquant son fonctionnement :  
+[Regarder la vidéo du déroulé du jeu](https://youtu.be/JSnIKgiI1E0)
+
 ## Aide et support
 
 Si tu rencontres des problèmes ou si tu as des questions concernant l'installation ou le fonctionnement du jeu, n'hésite pas à ouvrir un **issue** sur GitHub ou à poser ta question dans la section dédiée.
