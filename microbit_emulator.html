@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emulateur Micro:bit - Jeu du Chat</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .microbits-container {
+            display: flex;
+            gap: 40px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        
+        .microbit {
+            background: #2c3e50;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            border: 3px solid #34495e;
+            position: relative;
+        }
+        
+        .gamepad-microbit {
+            position: relative;
+        }
+        
+        .microbit-label {
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #ecf0f1;
+            font-size: 1.2em;
+        }
+        
+        .led-matrix {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 6px;
+            margin: 20px 0;
+            background: #000 !important;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: none;
+        }
+        
+        .led {
+            width: 25px;
+            height: 25px;
+            background: #333;
+            border-radius: 50%;
+            border: 1px solid #555;
+            transition: all 0.2s ease;
+        }
+        
+        .led.on {
+            background: #ff4444;
+            box-shadow: 0 0 10px #ff4444;
+        }
+        
+        .led.cat {
+            background: #44ff44;
+            box-shadow: 0 0 10px #44ff44;
+        }
+        
+        .led.arrow {
+            background: #ffa500;
+            box-shadow: 0 0 10px #ffa500;
+            border-color: #ffcc80;
+        }
+        .led.arrow-center {
+            background: #ffb300;
+            box-shadow: 0 0 18px #ffb300, 0 0 8px #ffa500;
+            border-color: #ffcc80;
+        }
+        
+        .score-display {
+            text-align: center;
+            background: rgba(52,152,219,0.2);
+            font-size: 1.1em;
+        }
+
+        .led.wall,
+        #console-matrix .led.wall,
+        #gamepad-matrix .led.wall {
+            background: #bbb !important;
+            border: 2px solid #fff;
+            box-shadow: none !important;
+        }
+        
+        .accelerometer-controls {
+            margin-top: 15px;
+            text-align: center;
+        }
+        
+        .accelerometer-controls h3 {
+            margin-bottom: 10px;
+            color: #ecf0f1;
+            font-size: 1.1em;
+        }
+        
+        .tilt-instructions {
+            font-size: 0.9em;
+            margin-bottom: 15px;
+            opacity: 0.9;
+        }
+        
+        .controls {
+            margin-top: 20px;
+        }
+        
+        .microbit-layout {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin: 10px 0;
+        }
+        
+        .btn-left, .btn-right {
+            width: 50px;
+            height: 50px;
+            background: #e74c3c;
+            border: none;
+            color: white;
+            font-weight: bold;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 5px 15px rgba(231,76,60,0.3);
+            user-select: none;
+        }
+        
+        .btn-left:hover, .btn-right:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+        }
+        
+        .btn-left span, .btn-right span {
+            font-size: 1.2em;
+        }
+        
+
+        .palette {
+            position: absolute;
+            background: rgba(180, 180, 180, 0.35);
+            border: 2px solid rgba(120,120,120,0.25);
+            color: #444;
+            font-size: 1em;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 3px 10px rgba(120,120,120,0.12);
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2;
+        }
+        .palette-top {
+            top: 0;
+            left: 16px;
+            right: 16px;
+            height: 14px;
+        }
+        .palette-bottom {
+            bottom: 0;
+            left: 16px;
+            right: 16px;
+            height: 14px;
+        }
+        .palette-left {
+            left: 0;
+            top: 16px;
+            bottom: 16px;
+            width: 14px;
+        }
+        .palette-right {
+            right: 0;
+            top: 16px;
+            bottom: 16px;
+            width: 14px;
+        }
+        /* Nettoyage : suppression des anciennes règles orphelines */
+        
+        .control-btn:active, .control-btn.tilting {
+            transform: translateY(0);
+            background: #e74c3c;
+            box-shadow: 0 0 15px #e74c3c;
+        }
+        
+        .game-info {
+            text-align: center;
+            margin: 20px 0;
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+            max-width: 400px;
+        }
+        
+        .status {
+            text-align: center;
+            margin: 12px 0 0 0;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #fff;
+            min-height: 1.5em;
+        }
+        
+        .success {
+            color: #2ecc71;
+            font-weight: bold;
+        }
+        
+        .error {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        
+        .reset-btn {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: bold;
+            margin: 15px;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(231,76,60,0.3);
+        }
+        
+        .reset-btn:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+        }
+        
+        .instructions {
+            text-align: center;
+            margin-top: 20px;
+            opacity: 0.9;
+            font-size: 0.9em;
+            max-width: 500px;
+        }
+        
+        .game-help {
+            text-align: center;
+            color: #eee;
+            margin-top: 18px;
+            font-size: 1.1em;
+            background: rgba(44,62,80,0.7);
+            border-radius: 10px;
+            padding: 12px 18px;
+            max-width: 420px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+        }
+        .game-help strong {
+            color: #ffd700;
+        }
+        
+        @media (max-width: 768px) {
+            .microbits-container {
+                flex-direction: column;
+                gap: 20px;
+            }
+            
+            .led {
+                width: 25px;
+                height: 25px;
+                background: #333;
+                border-radius: 50%;
+                border: 1px solid #555;
+                transition: all 0.2s ease;
+            }
+                font-size: 1.2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Emulateur Micro:bit</h1>
+        <div>Jeu du Chat - Attrape le chat vert avec le joueur rouge !</div>
+        <div style="margin-top:18px;">
+            <button class="reset-btn" onclick="resetGame()">Recommencer</button>
+        </div>
+    </div>
+    
+    <div class="microbits-container">
+        <div class="microbit">
+            <div class="microbit-layout">
+                <button class="btn-left" onclick="buttonA()"><span>A</span></button>
+                <div class="led-matrix" id="console-matrix"></div>
+                <button class="btn-right" onclick="buttonB()"><span>B</span></button>
+            </div>
+        </div>
+        <div class="microbit gamepad-microbit" style="position:relative;">
+            <div class="microbit-layout">
+                <button class="btn-left" onclick="buttonA()"><span>A</span></button>
+                <div class="led-matrix" id="gamepad-matrix"></div>
+                <button class="btn-right" onclick="buttonB()"><span>B</span></button>
+            </div>
+            <div class="palette palette-top" onmousedown="startTilt('up')" onmouseup="stopTilt()" ontouchstart="startTilt('up')" ontouchend="stopTilt()">^</div>
+            <div class="palette palette-left" onmousedown="startTilt('left')" onmouseup="stopTilt()" ontouchstart="startTilt('left')" ontouchend="stopTilt()">&lt;</div>
+            <div class="palette palette-right" onmousedown="startTilt('right')" onmouseup="stopTilt()" ontouchstart="startTilt('right')" ontouchend="stopTilt()">&gt;</div>
+            <div class="palette palette-bottom" onmousedown="startTilt('down')" onmouseup="stopTilt()" ontouchstart="startTilt('down')" ontouchend="stopTilt()">v</div>
+        </div>
+    </div>
+    
+    
+    <div class="game-help">
+        <div><strong>Comment jouer ?</strong></div>
+        <div>Utilise les <strong>flèches du clavier</strong> pour choisir une direction.</div>
+        <div>Appuie sur <strong>A</strong> (bouton ou touche) pour valider ton déplacement.</div>
+        <div>Le but : <span style="color:#44ff44">Attrape le chat vert</span> avec le joueur rouge !</div>
+    </div>
+    <div class="status" id="status">Prêt à jouer !</div>
+
+    
+    
+    
+    <script>
+        // État du jeu (fidèle au vrai jeu micro:bit)
+        let gameState = {
+            playerX: 5,
+            playerY: 5,
+            catX: 5,
+            catY: 5,
+            score: 0,
+            gameOver: false,
+            isGameRunning: false,
+            catMoveCounter: 0,
+            tiltDirection: null,
+            tiltActive: false,
+            // Carte 10x10 avec murs (W) sur les bords et quelques murs internes
+            board: Array.from({length: 10}, (_, y) => Array.from({length: 10}, (_, x) => {
+                if (x === 0 || x === 9 || y === 0 || y === 9) return 'W';
+                // Murs autour du chat au centre (5,5)
+                if ((x === 4 && y === 5) || (x === 6 && y === 5) || (x === 5 && y === 4) || (x === 5 && y === 6)) return 'W';
+                return 'O';
+            }))
+        };
+        
+        let tiltInterval = null;
+        
+        // Initialisation
+        function init() {
+            createLEDMatrices();
+            resetGame();
+        }
+        
+        // Créer les matrices LED
+        function createLEDMatrices() {
+            const consoleMatrix = document.getElementById('console-matrix');
+            const gamepadMatrix = document.getElementById('gamepad-matrix');
+            // Nettoyer les matrices avant de les remplir
+            consoleMatrix.innerHTML = '';
+            gamepadMatrix.innerHTML = '';
+            // Console matrix
+            for (let i = 0; i < 25; i++) {
+                const led = document.createElement('div');
+                led.className = 'led';
+                led.id = 'console-led-' + i;
+                consoleMatrix.appendChild(led);
+            }
+            // Gamepad matrix
+            for (let i = 0; i < 25; i++) {
+                const led = document.createElement('div');
+                led.className = 'led';
+                led.id = 'gamepad-led-' + i;
+                gamepadMatrix.appendChild(led);
+            }
+        }
+        
+        // Générer nouvelle position pour le chat (loin du joueur)
+        function generateCat() {
+            let attempts = 0;
+            do {
+                gameState.catX = Math.floor(Math.random() * 5);
+                gameState.catY = Math.floor(Math.random() * 5);
+                attempts++;
+            } while ((Math.abs(gameState.catX - gameState.playerX) < 2 && 
+                     Math.abs(gameState.catY - gameState.playerY) < 2) && attempts < 10);
+        }
+        
+        // Mouvement du chat vers le joueur (IA simple)
+        function moveCat() {
+            if (gameState.gameOver) return;
+            
+            const dx = gameState.playerX - gameState.catX;
+            const dy = gameState.playerY - gameState.catY;
+            
+            // Le chat se déplace vers le joueur
+            if (Math.abs(dx) > Math.abs(dy)) {
+                if (dx > 0 && gameState.catX < 4) gameState.catX++;
+                else if (dx < 0 && gameState.catX > 0) gameState.catX--;
+            } else {
+                if (dy > 0 && gameState.catY < 4) gameState.catY++;
+                else if (dy < 0 && gameState.catY > 0) gameState.catY--;
+            }
+            
+            // Vérifier si le chat a attrapé le joueur
+            if (gameState.catX === gameState.playerX && gameState.catY === gameState.playerY) {
+                gameOver();
+            }
+        }
+        
+        // Afficher une flèche sur la matrice du gamepad selon la direction inclinée
+                function showArrowOnGamepad(direction) {
+            // Efface d'abord toutes les flèches
+            for (let i = 0; i < 25; i++) {
+                const led = document.getElementById('gamepad-led-' + i);
+                if (led) led.classList.remove('arrow');
+            }
+            // Pas d'affichage direct ici, updateDisplay() gère tout
+        }
+        
+        // Simuler l'inclinaison (accéléromètre)
+        function startTilt(direction) {
+            if (gameState.gameOver) return;
+            gameState.tiltDirection = direction;
+            gameState.tiltActive = true;
+            showArrowOnGamepad(direction);
+            // Ajouter style visuel si le bouton existe
+            const btn = document.querySelector('.btn-' + direction);
+            if (btn) btn.classList.add('tilting');
+            // Message harmonisé
+            showStatus('Direction choisie : ' + direction + ' (valide avec A)');
+        }
+        
+        function stopTilt() {
+            gameState.tiltActive = false;
+            // On garde la direction sélectionnée jusqu'à validation
+            showArrowOnGamepad(null);
+            if (tiltInterval) {
+                clearInterval(tiltInterval);
+                tiltInterval = null;
+            }
+            // Retirer styles visuels
+            document.querySelectorAll('.control-btn').forEach(btn => {
+                btn.classList.remove('tilting');
+            });
+        }
+        
+        // Mettre à jour l'affichage
+        function updateDisplay() {
+
+            // Effacer toutes les LEDs
+            for (let i = 0; i < 25; i++) {
+                document.getElementById('console-led-' + i).className = 'led';
+                document.getElementById('gamepad-led-' + i).className = 'led';
+            }
+
+            // --- Console (affichage d'une flèche directionnelle uniquement) ---
+            // Déterminer la direction du chat par rapport au joueur
+            let direction = null;
+            const dx = gameState.catX - gameState.playerX;
+            const dy = gameState.catY - gameState.playerY;
+            if (Math.abs(dx) > Math.abs(dy)) {
+                if (dx > 0) direction = 'right';
+                else if (dx < 0) direction = 'left';
+            } else if (Math.abs(dy) > 0) {
+                if (dy > 0) direction = 'down';
+                else if (dy < 0) direction = 'up';
+            }
+            // Afficher les flèches selon les motifs fournis par l'utilisateur
+            const arrowMap = {
+                up:    { all: [2, 6, 7, 8, 12, 17, 22, 10, 14], center: 12 },
+                down:  { all: [22, 16, 17, 18, 12, 7, 2, 10, 14], center: 12 },
+                left:  { all: [10, 6, 11, 16, 12, 13, 14, 2, 22], center: 12 },
+                right: { all: [14, 8, 13, 18, 10, 11, 12, 2, 22], center: 12 }
+            };
+            if (direction && arrowMap[direction]) {
+                arrowMap[direction].all.forEach(idx => {
+                    if (idx === arrowMap[direction].center) {
+                        document.getElementById('console-led-' + idx).classList.add('arrow-center');
+                    } else {
+                        document.getElementById('console-led-' + idx).classList.add('arrow');
+                    }
+                });
+            }
+
+            // --- Gamepad (affichage de la carte avec joueur au centre, chat et murs) ---
+            // Définir la vue locale 5x5 centrée sur le joueur
+            for (let gy = 0; gy < 5; gy++) {
+                for (let gx = 0; gx < 5; gx++) {
+                    const ledIdx = gy * 5 + gx;
+                    // Coordonnées réelles sur la grande carte
+                    const mapX = gameState.playerX + (gx - 2);
+                    const mapY = gameState.playerY + (gy - 2);
+                    const led = document.getElementById('gamepad-led-' + ledIdx);
+                    // Par défaut, tout est éteint
+                    led.className = 'led';
+                    // Bord de la carte (hors limites)
+                    if (mapX < 0 || mapX > 9 || mapY < 0 || mapY > 9) continue;
+                    // Joueur au centre
+                    if (gx === 2 && gy === 2) {
+                        led.classList.add('on');
+                    // Chat
+                    } else if (mapX === gameState.catX && mapY === gameState.catY) {
+                        led.classList.add('cat');
+                    // Murs
+                    } else if (gameState.board && gameState.board[mapY] && gameState.board[mapY][mapX] === 'W') {
+                        led.classList.add('wall');
+                    } // sinon rien (case vide)
+                }
+            }
+
+            // Afficher le score si l'élément existe
+            const scoreElem = document.getElementById('score');
+            if (scoreElem) scoreElem.textContent = gameState.score;
+        }
+        
+        // Mouvement du joueur (via accéléromètre)
+        function movePlayer(direction) {
+            if (gameState.gameOver) return;
+            
+            const oldX = gameState.playerX;
+            const oldY = gameState.playerY;
+            let moved = false;
+            
+            let newX = gameState.playerX;
+            let newY = gameState.playerY;
+            switch(direction) {
+                case 'up':
+                    newY--;
+                    break;
+                case 'down':
+                    newY++;
+                    break;
+                case 'left':
+                    newX--;
+                    break;
+                case 'right':
+                    newX++;
+                    break;
+            }
+            // Vérifier les limites de la carte 10x10 et les murs
+            if (
+                newX >= 0 && newX < 10 &&
+                newY >= 0 && newY < 10 &&
+                gameState.board[newY][newX] !== 'W'
+            ) {
+                gameState.playerX = newX;
+                gameState.playerY = newY;
+                moved = true;
+            }
+            
+            if (moved) {
+                gameState.score++;
+                updateDisplay();
+                
+                // Le chat bouge après le joueur (tous les 2-3 mouvements)
+                gameState.catMoveCounter++;
+                if (gameState.catMoveCounter >= 2) {
+                    setTimeout(() => {
+                        moveCat();
+                        updateDisplay();
+                    }, 500);
+                    gameState.catMoveCounter = 0;
+                }
+            }
+        }
+        
+        // Boutons A et B
+        function buttonA() {
+            if (gameState.gameOver) {
+                resetGame();
+                showStatus('Nouveau jeu démarré !');
+            } else if (!gameState.isGameRunning) {
+                gameState.isGameRunning = true;
+                if (gameState.tiltDirection) {
+                    movePlayer(gameState.tiltDirection);
+                    showStatus('Jeu démarré et déplacement validé !');
+                    gameState.tiltDirection = null;
+                    showArrowOnGamepad(null);
+                } else {
+                    showStatus('Jeu démarré ! Attrape le chat vert !');
+                }
+            } else if (gameState.tiltDirection) {
+                movePlayer(gameState.tiltDirection);
+                showStatus('Déplacement validé !');
+                // Après déplacement, on efface la direction
+                gameState.tiltDirection = null;
+                showArrowOnGamepad(null);
+            } else {
+                showStatus('Choisis une direction avant de valider.');
+            }
+        }
+        
+        function buttonB() {
+            if (gameState.isGameRunning) {
+                gameState.isGameRunning = false;
+                showStatus('Jeu en pause');
+            } else {
+                showStatus('Menu - Appuie sur A pour jouer');
+            }
+        }
+        
+        // Game Over
+        function gameOver() {
+            gameState.gameOver = true;
+            gameState.isGameRunning = false;
+            stopTilt();
+            showStatus('Le chat t’a attrapé... Score : ' + gameState.score , 'error');
+            // Animation de game over
+            flashAllLEDs('red');
+        }
+        
+        // Animation de victoire/défaite
+        function flashAllLEDs(color = 'green') {
+            let flashes = 0;
+            const flashInterval = setInterval(() => {
+                for (let i = 0; i < 25; i++) {
+                    const consoleLed = document.getElementById('console-led-' + i);
+                    const gamepadLed = document.getElementById('gamepad-led-' + i);
+                    
+                    if (flashes % 2 === 0) {
+                        consoleLed.className = color === 'red' ? 'led cat' : 'led on';
+                        gamepadLed.className = color === 'red' ? 'led cat' : 'led on';
+                    } else {
+                        consoleLed.className = 'led';
+                        gamepadLed.className = 'led';
+                    }
+                }
+                
+                flashes++;
+                if (flashes >= 6) {
+                    clearInterval(flashInterval);
+                    updateDisplay();
+                }
+            }, 200);
+        }
+        
+        // Reset du jeu
+        function resetGame() {
+            stopTilt();
+            gameState.playerX = 2;
+            gameState.playerY = 2;
+            gameState.score = 0;
+            gameState.gameOver = false;
+            gameState.isGameRunning = false;
+            gameState.catMoveCounter = 0;
+            generateCat();
+            updateDisplay();
+            showStatus('Nouveau jeu ! Appuie sur A pour commencer');
+        }
+        
+        // Afficher un message de statut
+        function showStatus(message, type = '') {
+            const statusElement = document.getElementById('status');
+            statusElement.textContent = message;
+            statusElement.className = 'status ' + type;
+        }
+        
+        // Support du clavier (pour compatibilité)
+        // Pour éviter l'animation répétée sur keydown maintenu
+        const paletteKeyState = { up: false, down: false, left: false, right: false };
+        document.addEventListener('keydown', function(event) {
+            if (gameState.gameOver) return;
+            const classMap = {
+                up: 'palette-top',
+                down: 'palette-bottom',
+                left: 'palette-left',
+                right: 'palette-right'
+            };
+            function setPaletteActive(direction, active) {
+                const elem = document.querySelector('.' + classMap[direction]);
+                if (elem) {
+                    elem.style.transform = active ? 'scale(0.92)' : '';
+                }
+            }
+            switch(event.key) {
+                case 'ArrowUp':
+                    event.preventDefault();
+                    startTilt('up');
+                    if (!paletteKeyState.up) {
+                        setPaletteActive('up', true);
+                        paletteKeyState.up = true;
+                    }
+                    break;
+                case 'ArrowDown':
+                    event.preventDefault();
+                    startTilt('down');
+                    if (!paletteKeyState.down) {
+                        setPaletteActive('down', true);
+                        paletteKeyState.down = true;
+                    }
+                    break;
+                case 'ArrowLeft':
+                    event.preventDefault();
+                    startTilt('left');
+                    if (!paletteKeyState.left) {
+                        setPaletteActive('left', true);
+                        paletteKeyState.left = true;
+                    }
+                    break;
+                case 'ArrowRight':
+                    event.preventDefault();
+                    startTilt('right');
+                    if (!paletteKeyState.right) {
+                        setPaletteActive('right', true);
+                        paletteKeyState.right = true;
+                    }
+                    break;
+                case 'a':
+                case 'A':
+                    event.preventDefault();
+                    buttonA();
+                    break;
+                case 'b':
+                case 'B':
+                    event.preventDefault();
+                    buttonB();
+                    break;
+                case ' ':
+                    event.preventDefault();
+                    resetGame();
+                    break;
+            }
+        });
+
+        document.addEventListener('keyup', function(event) {
+            const classMap = {
+                up: 'palette-top',
+                down: 'palette-bottom',
+                left: 'palette-left',
+                right: 'palette-right'
+            };
+            function setPaletteActive(direction, active) {
+                const elem = document.querySelector('.' + classMap[direction]);
+                if (elem) {
+                    elem.style.transform = active ? 'scale(0.92)' : '';
+                }
+            }
+            switch(event.key) {
+                case 'ArrowUp':
+                    paletteKeyState.up = false;
+                    setPaletteActive('up', false);
+                    break;
+                case 'ArrowDown':
+                    paletteKeyState.down = false;
+                    setPaletteActive('down', false);
+                    break;
+                case 'ArrowLeft':
+                    paletteKeyState.left = false;
+                    setPaletteActive('left', false);
+                    break;
+                case 'ArrowRight':
+                    paletteKeyState.right = false;
+                    setPaletteActive('right', false);
+                    break;
+            }
+            // ...existing code...
+            switch(event.key) {
+                case 'ArrowUp':
+                case 'ArrowDown':
+                case 'ArrowLeft':
+                case 'ArrowRight':
+                    event.preventDefault();
+                    stopTilt();
+                    break;
+            }
+        });
+        
+        document.addEventListener('keyup', function(event) {
+            switch(event.key) {
+                case 'ArrowUp':
+                case 'ArrowDown':
+                case 'ArrowLeft':
+                case 'ArrowRight':
+                    event.preventDefault();
+                    stopTilt();
+                    break;
+            }
+        });
+        
+
+        
+        // Initialisation au chargement
+        window.addEventListener('load', init);
+        
+
+    </script>
+</body>
+</html>
